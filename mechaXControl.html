@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>
+            .slidecontainer {
+            width: 100%;
+            }
+
+            .slider {
+            width: 100%;
+            height: 25px;
+            background: #d3d3d3;
+            outline: none;
+            opacity: 0.7;
+            -webkit-transition: .2s;
+            transition: opacity .2s;
+            }
+
+            .slider:hover {
+            opacity: 1;
+            }
+
+            .title{
+                font-size: 2em;
+                font-weight: bold;
+                color: white;
+                margin: 10px;
+                text-align: center;
+            }
+            .card {
+            box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2);
+            transition: 0.3s;
+            width: 50%;
+            border-radius: 5px;
+            background-color: white;
+            padding: 20px;
+            margin: 10px;
+            }
+            .card-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            }
+            .title-value {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+            }
+            .value{
+                font-size: 2em;
+                font-weight: bold;
+                color: #cccccc;
+            }
+
+            .record-button {
+            background-color: #008000;
+            border: none;
+            color: white;
+            padding: 15px 32px;
+            border-radius: 20px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            }
+
+            .record-button:hover {
+                background-color: #4da64d;
+            }
+
+            .play-button {
+            background-color: #3824b0;
+            border: none;
+            color: white;
+            padding: 15px 32px;
+            border-radius: 20px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            }
+
+            .play-button:hover {
+                background-color: #7466c8;
+            }
+
+            .nav-bar {
+            overflow: hidden;
+            background-color: #3824b0;
+            position: fixed;
+            top: 0;
+            width: 100%;
+            }
+
+            /* for medium and small screens make card 100% width */
+            @media screen and (max-width: 768px) {
+            .card {
+                width: 80%;
+            }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="card-container">
+            <div class="nav-bar">
+                <h1 class="title">MechaX Control</h1>
+            </div>
+            <div class="card" style="margin-top: 4rem;">
+                <div class="title-value">
+                <h2>Gripper</h2>
+                <p id="gripper-val" class="value">90</p>
+                </div>
+            <input type="range" min="0" max="180" value="90" class="slider" id="gripper" oninput='sendSliderOutput("gripper",value)'>
+
+            <div class="title-value">
+                <h2>Elbow</h2>
+                <p id="elbow-val" class="value">90</p>
+                </div>
+            <input type="range" min="0" max="180" value="90" class="slider" id="elbow" oninput='sendSliderOutput("elbow",value)'>
+
+            <div class="title-value">
+                <h2>Shoulder</h2>
+                <p id="shoulder-val" class="value">90</p>
+                </div>
+            <input type="range" min="0" max="180" value="90" class="slider" id="shoulder" oninput='sendSliderOutput("shoulder",value)'>
+
+            <div class="title-value">
+                <h2>Base</h2>
+                <p id="base-val" class="value">90</p>
+                </div>
+            <input type="range" min="0" max="180" value="90" class="slider" id="base" oninput='sendSliderOutput("base",value)'>
+            </div>
+
+            <div class="card">
+                <div class="title-value">
+                    <input type="button" class="record-button" id="record" value="Record" onclick='onclickRecord(this)'>
+                    <input type="button" class="play-button" id="play" value="Play" onclick='onclickPlay(this)'>
+                </div>
+            </div>
+        </div>
+        <script>
+            var serverInputUrl = "ws:\/\/" + window.location.hostname + "/Input"; 
+            var serverInput;
+            
+            function initServerWebSocket() 
+            {
+                serverInput = new WebSocket(serverInputUrl);
+                serverInput.onopen    = function(event){};
+                serverInput.onclose   = function(event){setTimeout(initServerWebSocket, 2000);};
+                serverInput.onmessage = function(event){
+                    var data = event.data.split(",");
+                    var slider = document.getElementById(data[0]);
+                    slider.value = data[1];
+                    var sliderValue = document.getElementById(data[0] + "-val");
+                    sliderValue.innerHTML = data[1];
+                    if(data[0] == "record")
+                    {
+                        var button = document.getElementById("record");
+                        button.value = data[1] == "1" ? "Stop" : "Record" ;
+                        button.style.backgroundColor = button.value == "Stop" ? "#ff0000" : " #008000";
+                        disableComponents(button, button.id);
+                    }
+                    else if(data[0] == "play")
+                    {
+                        var button = document.getElementById("play");
+                        button.value = data[1] == "1" ? "Stop" : "Play" ;
+                        button.style.backgroundColor = button.value == "Stop" ? "#ff0000" : " #008000";
+                        disableComponents(button, button.id);
+                    }
+                };
+            }
+
+            function sendSliderOutput(key, value) 
+            {
+            var data = key + "," + value;
+            var output = document.getElementById(key + "-val");
+            output.innerHTML = value;
+            serverInput.send(data);
+            }
+
+            function onclickRecord(button) 
+            {
+            button.value = button.value == "Record" ? "Stop" : "Record" ;
+            button.style.backgroundColor = button.value == "Stop" ? "#ff0000" : " #008000";
+            var value = button.value == "Stop" ? "1" : "0";
+            var data = button.id + "," + value;
+            disableComponents(button, button.id);
+            serverInput.send(data);
+            }
+            function onclickPlay(button) 
+            {
+            button.value = button.value == "Play" ? "Stop" : "Play" ;
+            button.style.backgroundColor = button.value == "Stop" ? "#ff0000" : "#3824b0";
+            var value = button.value == "Stop" ? "1" : "0";
+            var data = button.id + "," + value;
+            disableComponents(button, button.id);
+            serverInput.send(data);
+            }
+            function disableComponents(button, id) 
+            {
+                if (button.value == "Stop") 
+                {
+                    if(id != "record")
+                    {
+                        document.getElementById("gripper").disabled = true;
+                        document.getElementById("elbow").disabled = true;
+                        document.getElementById("shoulder").disabled = true;
+                        document.getElementById("base").disabled = true;
+                        document.getElementById("record").disabled = true;
+                    }
+                    else
+                    {
+                        document.getElementById("play").disabled = true;
+                    }
+                }
+                else 
+                {
+                    document.getElementById("gripper").disabled = false;
+                    document.getElementById("elbow").disabled = false;
+                    document.getElementById("shoulder").disabled = false;
+                    document.getElementById("base").disabled = false;
+                    id == "record" ? document.getElementById("play").disabled = false : document.getElementById("record").disabled = false;
+                }
+            }
+            window.onload = initServerWebSocket;
+        </script>
+    </body>
+</html>
